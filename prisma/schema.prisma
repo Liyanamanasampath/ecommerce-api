@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int       @id @default(autoincrement())
+  first_name         String?
+  last_name          String?
+  email              String    @unique
+  mobile             String?
+  password           String?
+  role               String    @default("USER")
+  is_blocked         Boolean   @default(false)
+  cart               Json?
+  refresh_token      String?
+  pwd_reset_token    String?
+  reset_token_exp_at DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+}
+
+model Category {
+  id         Int       @id @default(autoincrement())
+  name       String
+  is_active  Boolean   @default(true)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  products   Product[]
+}
+
+model Product {
+  id          Int            @id @default(autoincrement())
+  description String?
+  slug        String?
+  price       Float?
+  quantity    Int?
+  categoryId  Int
+  created_at  DateTime       @default(now())
+  updated_at  DateTime       @updatedAt
+  title       String?
+  orderItems  OrderItem[]
+  category    Category       @relation(fields: [categoryId], references: [id])
+  images      ProductImage[]
+}
+
+model Image {
+  id         Int            @id @default(autoincrement())
+  url        String
+  fileName   String?
+  created_at DateTime       @default(now())
+  updated_at DateTime       @updatedAt
+  products   ProductImage[]
+}
+
+model ProductImage {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  imageId   Int
+  image     Image   @relation(fields: [imageId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@unique([productId, imageId])
+}
+
+model Order {
+  id            Int           @id @default(autoincrement())
+  total         Float?
+  tax           Float?
+  subTotal      Float?
+  orderStatus   OrderStatus   @default(IN_PROGRESS)
+  paymentStatus PaymentStatus @default(PENDING)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+  orderItems    OrderItem[]
+  payment       Payment?
+}
+
+model OrderItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  prodctId   Int
+  price      Float?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  order      Order    @relation(fields: [orderId], references: [id])
+  product    Product  @relation(fields: [prodctId], references: [id])
+}
+
+model Payment {
+  id              Int           @id @default(autoincrement())
+  paymentStatus   PaymentStatus @default(PENDING)
+  amount          Float?
+  token           String?
+  currency        String?
+  orderId         Int           @unique
+  stripePaymentId String?
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+  order           Order         @relation(fields: [orderId], references: [id])
+}
+
+enum OrderStatus {
+  IN_PROGRESS
+  PENDING
+  COMPLETED
+  DISPATCHED
+  DELIVERED
+}
+
+enum PaymentStatus {
+  PENDING
+  FAILED
+  COMPLETED
+}

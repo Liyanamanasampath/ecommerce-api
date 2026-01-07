@@ -25,4 +25,5 @@ const completePayment = async (req, res, next) => {
 
 module.exports = {
     commitPayment,
+    completePayment
 };
