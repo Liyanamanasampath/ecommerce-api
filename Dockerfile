@@ -13,6 +13,8 @@ RUN npm install
 #copy files
 COPY . .
 
+RUN npx prisma generate
+
 #expose files
 EXPOSE 5000 
 
