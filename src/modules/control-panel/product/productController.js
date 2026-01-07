@@ -21,8 +21,7 @@ const create = async (req, res, next) => {
         const productData = req.body;
         const images = req.files.map(file => file.path);
         const products  = await productService.create({
-            ...productData,
-            images
+            ...productData
         });
 
         return res.status(201).json(products);

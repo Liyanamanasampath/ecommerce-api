@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
+const { authMiddleware, isAdmin } = require('./middleware/authMiddleware');
 dotenv.config();
 const app = express();
 const { prisma, connectDB } = require('./config/dbConnect');
@@ -15,16 +16,12 @@ app.use(cookieParser());
 const authRoutes = require('./modules/auth/auth.route');
 const chUserRoutes = require('./modules/control-panel/user/user.route');
 const chProductRoutes = require('./modules/control-panel/product/product.route');
-const chBlogRoutes = require('./modules/control-panel/blog/blog.route');
 const chCategoryRoutes = require('./modules/control-panel/category/category.route');
 const chOrderRoutes = require('./modules/control-panel/order/order.route');
 const waProductRoutes = require('./modules/web-app/product/product.route');
-const waBlogRoutes = require('./modules/web-app/blog/blog.route');
 const waCategoryRoutes = require('./modules/web-app/category/category.route');
 const waOrderRoutes = require('./modules/web-app/order/order.route');
 const waPaymentRoutes = require('./modules/web-app/payment/payment.route');
-
-const { authMiddleware, isAdmin } = require('./middleware/authMiddleware');
 
 /* authentication */
 app.use('/api/auth', authRoutes);
@@ -32,13 +29,11 @@ app.use('/api/auth', authRoutes);
 /* control hub */
 app.use('/api/ch/users', authMiddleware, isAdmin, chUserRoutes);
 app.use('/api/ch/products', authMiddleware, isAdmin, chProductRoutes);
-app.use('/api/ch/blogs', authMiddleware, isAdmin, chBlogRoutes);
 app.use('/api/ch/category', authMiddleware, isAdmin, chCategoryRoutes);
 app.use('/api/ch/order', authMiddleware, isAdmin, chOrderRoutes);
 
 /* web app */
 app.use('/api/wa/products', waProductRoutes);
-app.use('/api/wa/blogs', waBlogRoutes);
 app.use('/api/wa/category', waCategoryRoutes);
 app.use('/api/wa/order', waOrderRoutes);
 app.use('/api/wa/payment', waPaymentRoutes);

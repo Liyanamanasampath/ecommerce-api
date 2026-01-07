@@ -9,16 +9,16 @@ const index = async (req, res, next) => {
     }
 }; 
 
-const create = async (req, res, next) => {
-    try {
-        const orderData = req.body;
-        const order  = await orderService.create(orderData);
+// const create = async (req, res, next) => {
+//     try {
+//         const orderData = req.body;
+//         const order  = await orderService.create(orderData);
 
-        return res.status(201).json(order);
-    } catch (error) {
-        next(error);
-    }
-};
+//         return res.status(201).json(order);
+//     } catch (error) {
+//         next(error);
+//     }
+// };
 
 const show = async (req, res, next) => {
     const { id } = req.params;
@@ -33,19 +33,19 @@ const show = async (req, res, next) => {
     }
 };
 
-const update = async (req, res, next) => {
-    const { id } = req.params;
-    const orderData  = req.body;
-    try {
-        const updatedorder = await orderService.update(id, orderData);
-        if (!updatedorder) {
-            return res.status(404).json({ message: 'order not found' });
-        }
-        return res.status(200).json(updatedorder);
-    } catch (error) {
-        next(error);
-    }
-};
+// const update = async (req, res, next) => {
+//     const { id } = req.params;
+//     const orderData  = req.body;
+//     try {
+//         const updatedorder = await orderService.update(id, orderData);
+//         if (!updatedorder) {
+//             return res.status(404).json({ message: 'order not found' });
+//         }
+//         return res.status(200).json(updatedorder);
+//     } catch (error) {
+//         next(error);
+//     }
+// };
 
 const destroy = async (req, res, next) => {
     const { id } = req.params;
@@ -62,8 +62,6 @@ const destroy = async (req, res, next) => {
 
 module.exports = {
     index,
-    create,
     show,
-    update,
     destroy,
 };

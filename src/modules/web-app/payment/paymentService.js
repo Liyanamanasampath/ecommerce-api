@@ -2,74 +2,115 @@ const Order = require('../../../models/order');
 const StripeOnlinePayment = require('../../../models/Payment')
 const createError = require('http-errors');
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
-const crypto = require('crypto')
+const crypto = require('crypto');
+const { prisma } = require('../../../config/dbConnect');
 
-const commitPayment = async (order_id) => {
-    const order = await Order.findById(order_id).populate('products.product');
-    if (!order) {
-        throw createError(404,'order not found');
-    }
-    const currency =  'USD';
-
-    const line_items = order?.products.map(item => ({
-        price_data: {
-            currency: currency,
-            product_data: { name: item?.product?.title },
-            unit_amount: Math.round(item?.price * 100),
+const commitPayment = async (orderId) => {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        total: true,
+        orderItems: {
+          select: {
+            price: true,
+            quantity: true,
+            product: {
+              select: {
+                title: true,
+              },
+            },
+          },
         },
-        quantity: item.qty,
+      },
+    });
+  
+    if (!order) {
+      throw createError(404, 'Order not found');
+    }
+  
+    const currency = 'USD';
+    const line_items = order.orderItems.map(item => ({
+      price_data: {
+        currency,
+        product_data: {
+          name: item.product.title,
+        },
+        unit_amount: Math.round(item.price * 100),
+      },
+      quantity: item.quantity,
     }));
-
+  
     const token = crypto.randomBytes(20).toString('hex');
     const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items,
-        mode: 'payment',
-        success_url: `${process.env.WEB_URL}/stripe-payment/${order_id}/success?token=${token}`,
-        cancel_url: `${process.env.WEB_URL}/stripe-payment/${order_id}/cancel`,
-        metadata: {
-            order_id: order_id,
-            token: token
-        }
+      payment_method_types: ['card'],
+      line_items,
+      mode: 'payment',
+      success_url: `${process.env.WEB_URL}/stripe-payment/${orderId}/success?token=${token}`,
+      cancel_url: `${process.env.WEB_URL}/stripe-payment/${orderId}/cancel`,
+      metadata: {
+        order_id: orderId.toString(),
+        token,
+      },
     });
-    await StripeOnlinePayment.create({
-        reference: `ORDER${order_id}`,
-        paymentId: session.id,
+
+    await prisma.payment.create({
+      data: {
+        orderId: orderId,
         amount: order.total,
-        payment_status: session.payment_status,
-        currency: currency,
-        token: token,
+        paymentStatus: session.payment_status,
+        currency,
+        token,
+        stripePaymentId: session.id,
+      },
     });
-
+  
     return session;
-};
+  };
 
 
-const completePayment = async (order_id, token) => {
-    const order = await Order.findById(order_id);
+  const completePayment = async (orderId, token) => {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+  
     if (!order) {
-        throw createError(404, 'Order not found');
+      throw createError(404, 'Order not found');
     }
-
-    const payment = await StripeOnlinePayment.findOne({ token });
+  
+    const payment = await prisma.payment.findUnique({
+      where: { token },
+    });
+  
     if (!payment) {
-        throw createError(404, 'Payment record not found');
+      throw createError(404, 'Payment record not found');
     }
-
-    const session = await stripe.checkout.sessions.retrieve(payment.paymentId); 
-    if (session?.payment_status === 'paid') {
-        payment.status = session.payment_status;
-        await payment.save();
-
-        order.paymentStatus = session.payment_status;
-        order.orderStatus = 'in_progress';
-        await order.save(); 
-    } else {
-        throw createError(400, 'Payment not completed');
+  
+    const session = await stripe.checkout.sessions.retrieve(
+      payment.stripePaymentId
+    );
+  
+    if (session.payment_status === 'paid') {
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          paymentStatus: session.payment_status,
+        },
+      });
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: 'COMPLETED',
+          orderStatus: 'IN_PROGRESS',
+        },
+      });
+  
+      return session;
     }
-
-    return session;
-};
+  
+    throw createError(400, 'Payment not completed');
+  };
+  
 
 
 module.exports = {

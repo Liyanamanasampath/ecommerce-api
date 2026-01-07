@@ -1,97 +1,152 @@
 const Product = require('../../../models/product');
 const createError = require('http-errors');
 const User = require('../../../models/user');
+const { prisma } = require('../../../config/dbConnect');
 
+//================== get product by id  ==================================
 const getById = async (id) => {
-    const product = await Product.findById(id);
+    const product = await prisma.product.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            title: true,
+            description: true,
+            slug: true,
+            price: true,
+            quantity: true,
+            categoryId: true,
+            images: {
+                select: {
+                    image: {
+                        select: {
+                            url: true,
+                            fileName: true
+                        }
+                    }
+                }
+            }
+        }
+    });
     if (!product) {
         throw createError(404, 'Product not found');
     }
     return product;
 };
 
+//================== get all product  ==================================
 const getAll = async (query) => {
     const { title, minPrice, maxPrice, minRating, sort, page = 1, limit = 10 } = query;
 
-    const filter = {};
+    const where = {};
 
     if (title) {
-        filter.title = new RegExp(title, 'i');
+        where.title = {
+            contains: title,
+            mode: 'insensitive',
+        };
     }
 
-    filter.price = { $gte: minPrice || 0 };
-    if (maxPrice) {
-        filter.price.$lte = maxPrice;
+    if (minPrice || maxPrice) {
+        where.price = {
+            ...(minPrice && { gte: Number(minPrice) }),
+            ...(maxPrice && { lte: Number(maxPrice) }),
+        };
     }
 
-    if (minRating) {
-        filter['ratings.star'] = { $gte: minRating };
+    let orderBy = {};
+    switch (sort) {
+        case 'priceLowToHigh':
+            orderBy.price = 'asc';
+            break;
+        case 'priceHighToLow':
+            orderBy.price = 'desc';
+            break;
+        case 'latest':
+            orderBy.created_at = 'desc';
+            break;
+        case 'oldest':
+            orderBy.created_at = 'asc';
+            break;
+        default:
+            orderBy.created_at = 'desc';
     }
 
-    let sortOption = {};
-    if (sort === 'priceLowToHigh') {
-        sortOption.price = 1;
-    } else if (sort === 'priceHighToLow') {
-        sortOption.price = -1;
-    } else if (sort === 'latest') {
-        sortOption.createdAt = -1;
-    } else if (sort === 'oldest') {
-        sortOption.createdAt = 1;
-    } else if (sort === 'popularity') {
-        sortOption.sold = -1;
-    }
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
 
-    const skip = (page - 1) * limit;
-
-    const products = await Product.find(filter)
-        .sort(sortOption)
-        .skip(skip)
-        .limit(limit)
-
-    const totalProducts = await Product.countDocuments(filter);
-
-    return { products, totalProducts, page, limit };
+    const products = await prisma.product.findMany({
+        where,
+        orderBy,
+        skip,
+        take,
+        select: {
+            id: true,
+            title: true,
+            price: true,
+            quantity: true,
+            created_at: true,
+            images: {
+                select: {
+                    image: {
+                        select: {
+                            url: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+    const total = await prisma.product.count({ where });
+    return {
+        data: products,
+        pagination: {
+            total,
+            page: Number(page),
+            limit: Number(limit),
+            totalPages: Math.ceil(total / limit),
+        },
+    };
 };
 
-const addToWishList = async (prodId, userId) => {
-    try {
-        const user = await User.findById(userId);
-        if (!user) {
-            throw createError(404, 'User not found');
-        }
-        const productExists = user.wishlist.includes(prodId);
+// const addToWishList = async (prodId, userId) => {
+//     try {
+//         const user = await User.findById(userId);
+//         if (!user) {
+//             throw createError(404, 'User not found');
+//         }
+//         const productExists = user.wishlist.includes(prodId);
 
-        if (productExists) {
-            user.wishlist = user.wishlist.filter(id => id.toString() !== prodId);
-        } else {
-            user.wishlist.push(prodId);
-        }
-        await user.save();
-        return user;
-    } catch (error) {
-        throw createError(500, error.message);
-    }
-};
+//         if (productExists) {
+//             user.wishlist = user.wishlist.filter(id => id.toString() !== prodId);
+//         } else {
+//             user.wishlist.push(prodId);
+//         }
+//         await user.save();
+//         return user;
+//     } catch (error) {
+//         throw createError(500, error.message);
+//     }
+// };
 
-const addRating = async (prodId, star, review, id) => {
-    try {
-        const product = await Product.findById(prodId);
-        if (!product) {
-            throw createError(404, 'product not found');
-        }
-        const obj = {
-            star: star,
-            postedBy: id,
-            review: review
-        }
-        console.log(obj);
-        product.ratings.push(obj);
-        await product.save();
-        return product;
-    } catch (error) {
-        throw createError(500, error.message);
-    }
-};
+// const addRating = async (prodId, star, review, id) => {
+//     try {
+//         const product = await Product.findById(prodId);
+//         if (!product) {
+//             throw createError(404, 'product not found');
+//         }
+//         const obj = {
+//             star: star,
+//             postedBy: id,
+//             review: review
+//         }
+//         console.log(obj);
+//         product.ratings.push(obj);
+//         await product.save();
+//         return product;
+//     } catch (error) {
+//         throw createError(500, error.message);
+//     }
+// };
 
 
 
@@ -99,6 +154,4 @@ const addRating = async (prodId, star, review, id) => {
 module.exports = {
     getById,
     getAll,
-    addToWishList,
-    addRating
 };
