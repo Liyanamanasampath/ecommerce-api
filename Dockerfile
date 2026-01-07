@@ -14,6 +14,6 @@ RUN npm install
 COPY . .
 
 #expose files
-EXPOSE 5000
+EXPOSE 5000 
 
 CMD [ "npm" ,"start" ]
