@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
+const logger = require("./config/logger");
+const fs = require("fs");
 const { authMiddleware, isAdmin } = require('./middleware/authMiddleware');
 dotenv.config();
 const app = express();
@@ -40,10 +42,28 @@ app.use('/api/wa/payment', waPaymentRoutes);
 
 /* error handler */
 app.use((err, req, res, next) => {
+    logger.error(
+        {
+            method: req.method,
+            url: req.originalUrl,
+            stack: err.stack,
+        },
+        err.message
+    );
     res.status(err.status || 500).json({
         message: err.message || 'Internal Server Error',
+        stack: err?.stack
     });
 });
+
+process.on("unhandledRejection", (reason) => {
+    logger.error(reason, "Unhandled Promise Rejection");
+});
+
+process.on("uncaughtException", (err) => {
+    logger.fatal(err, "Uncaught Exception");
+});
+
 
 /* graceful shutdown */
 process.on('SIGINT', async () => {

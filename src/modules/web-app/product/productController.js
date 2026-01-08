@@ -2,15 +2,8 @@ const productService = require('./productService');
 
 const index = async (req, res, next) => {
     try {
-        const { products, totalProducts, page, limit } = await productService.getAll(req?.query);
-        return res.status(200).json({
-            products,
-            pagination: {
-                totalProducts,
-                currentPage: page,
-                totalPages: Math.ceil(totalProducts / limit),
-            },
-        });
+        const data = await productService.getAll(req?.query);
+        return res.status(200).json(data);
     } catch (error) {
         next(error);
     }

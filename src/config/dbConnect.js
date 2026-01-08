@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient({}); // ✅ REQUIRED in Prisma v7
+const prisma = new PrismaClient({});
 
 const connectDB = async () => {
   try {
@@ -8,7 +8,7 @@ const connectDB = async () => {
     console.log('Database connected successfully');
   } catch (error) {
     console.error('Database connection error:', error);
-    process.exit(1);
+    // process.exit(1);
   }
 };
 

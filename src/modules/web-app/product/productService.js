@@ -5,8 +5,9 @@ const { prisma } = require('../../../config/dbConnect');
 
 //================== get product by id  ==================================
 const getById = async (id) => {
+    const productId = Number(id);
     const product = await prisma.product.findUnique({
-        where: { id },
+        where: { id : productId },
         select: {
             id: true,
             title: true,
@@ -98,7 +99,7 @@ const getAll = async (query) => {
     });
     const total = await prisma.product.count({ where });
     return {
-        data: products,
+        data: products?.lenght > 0 ? products : [],
         pagination: {
             total,
             page: Number(page),
