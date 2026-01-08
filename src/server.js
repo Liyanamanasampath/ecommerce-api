@@ -7,8 +7,13 @@ const fs = require("fs");
 const { authMiddleware, isAdmin } = require('./middleware/authMiddleware');
 dotenv.config();
 const app = express();
+const http = require("http");
+const { initSocket } = require("./config/socket");
 const { prisma, connectDB } = require('./config/dbConnect');
-connectDB();
+
+const server = http.createServer(app);
+const io = initSocket(server); 
+app.set("io", io);
 
 /* middleware */
 app.use(bodyParser.json());
@@ -77,6 +82,18 @@ process.on('SIGTERM', async () => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+async function startServer() {
+    try {
+      await connectDB();
+  
+      server.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    } catch (err) {
+      logger.fatal(err, "Failed to start server");
+      process.exit(1);
+    }
+  }
+  
+  startServer();
+
