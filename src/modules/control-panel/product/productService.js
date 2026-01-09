@@ -4,18 +4,101 @@ const bcrypt = require('bcrypt');
 const { prisma } = require('../../../config/dbConnect');
 
 //================== create product  ==================================
-const create = async (product) => {
-    const productData = await prisma.create({ data: product });
-    return productData;
+const create = async (productData, images) => {
+    const { title, description, price, quantity, categoryId, slug } = productData;
+
+    return await prisma.$transaction(async (tx) => {
+        const product = await tx.product.create({
+            data: {
+                title,
+                description,
+                slug,
+                price: Number(price),
+                quantity: Number(quantity),
+                categoryId: Number(categoryId),
+            },
+        });
+        if (images.length > 0) {
+            const createdImages = await Promise.all(
+                images.map(img =>
+                    tx.image.create({
+                        data: {
+                            url: img.url,
+                            fileName: img.fileName,
+                        },
+                    })
+                )
+            );
+            await tx.productImage.createMany({
+                data: createdImages.map(image => ({
+                    productId: product.id,
+                    imageId: image.id,
+                })),
+            });
+        }
+        return product;
+    });
 };
 
 //================== update product  ==================================
-const update = async (id, productData) => {
-    const product = await prisma.product.update({ where: { id }, data: productData });
-    if (!product) {
-        throw createError(404, 'Product not found');
-    }
-    return product;
+const update = async (
+    productId,
+    productData,
+    existingImageIds,
+    newImages
+) => {
+    return await prisma.$transaction(async (tx) => {
+        const product = await tx.product.findUnique({
+            where: { id: productId },
+        });
+
+        if (!product) {
+            throw createError(404, "Product not found");
+        }
+
+        await tx.product.update({
+            where: { id: productId },
+            data: {
+                title: productData.title,
+                description: productData.description,
+                slug: productData.slug,
+                price: productData.price ? Number(productData.price) : undefined,
+                quantity: productData.quantity ? Number(productData.quantity) : undefined,
+                categoryId: productData.categoryId ? Number(productData.categoryId) : undefined,
+            },
+        });
+
+        await tx.productImage.deleteMany({
+            where: {
+                productId,
+                imageId: {
+                    notIn: existingImageIds.length ? existingImageIds : [0],
+                },
+            },
+        });
+
+        if (newImages.length > 0) {
+            const createdImages = await Promise.all(
+                newImages.map(img =>
+                    tx.image.create({
+                        data: {
+                            url: img.url,
+                            fileName: img.fileName,
+                        },
+                    })
+                )
+            );
+
+            await tx.productImage.createMany({
+                data: createdImages.map(image => ({
+                    productId,
+                    imageId: image.id,
+                })),
+            });
+        }
+
+        return product;
+    });
 };
 
 //================== get product by id  ==================================
@@ -127,13 +210,13 @@ const getAll = async (query) => {
 //================== delete product ==================================
 const deleteProduct = async (id) => {
     const product = await prisma.product.findUnique({
-        where : {id}
+        where: { id }
     });
     if (!product) {
         throw createError(404, 'Product not found');
     }
     await prisma.product.delete({
-        where : {id}
+        where: { id }
     });
     return { message: 'Product deleted successfully' };
 };

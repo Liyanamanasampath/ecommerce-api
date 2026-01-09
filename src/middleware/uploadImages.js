@@ -1,50 +1,30 @@
-const cloudinary = require('cloudinary').v2;
-const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require("cloudinary").v2;
+const multer = require("multer");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
 cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; 
 
 const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: 'products',
-        format: async (req, file) => {
-            return file.mimetype.split('/')[1];
-        },
-        public_id: (req, file) => {
-            return file.originalname.split('.')[0];
-        },
-    },
+  cloudinary,
+  params: {
+    folder: "products",
+    resource_type: "image",
+    public_id: () =>
+      `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+  },
 });
 
-const fileFilter = (req, file, cb) => {
-    if (file.size > MAX_FILE_SIZE) {
-        cb(new Error('File size exceeds 2 MB'), false); 
-    } else {
-        cb(null, true); 
-    }
-};
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+});
 
-const upload = multer({ 
-    storage, 
-    limits: { fileSize: MAX_FILE_SIZE }, 
-    fileFilter 
-}).array('images', 5); 
-
-const uploadMiddleware = (req, res, next) => {
-    upload(req, res, (err) => { 
-        if (err) {
-            console.error('Upload error:', err); 
-            return res.status(400).json({ error: err.message});
-        }
-        next(); 
-    });
-};
-
-module.exports = uploadMiddleware;
+module.exports = upload.fields([
+  { name: "image", maxCount: 1 },    
+  { name: "images", maxCount: 5 },  
+  { name: "thumbnail", maxCount: 1 },
+]);

@@ -6,9 +6,9 @@ const validate = require('../../../middleware/validate');
 const productDto = require('../../../validator/validateProduct');
 
 router.get('/', productController.index);            
-router.post('/' , upload,validate(productDto) ,productController.create);       
+router.post('/' , validate(productDto),upload ,productController.create);       
 router.get('/:id',productController.show);     
-router.put('/:id',validate(productDto),productController.update);   
+router.put('/:id',validate(productDto),upload,productController.update);   
 router.delete('/:id',productController.destroy);
 
 
