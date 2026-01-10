@@ -2,18 +2,18 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
-const logger = require("./config/logger");
+// const logger = require("./config/logger");
 const fs = require("fs");
 const { authMiddleware, isAdmin } = require('./middleware/authMiddleware');
 dotenv.config();
 const app = express();
 const http = require("http");
 const { initSocket } = require("./config/socket");
-const { prisma, connectDB } = require('./config/dbConnect');
+// const { prisma, connectDB } = require('./config/dbConnect');
 
 const server = http.createServer(app);
-const io = initSocket(server); 
-app.set("io", io);
+// const io = initSocket(server); 
+// app.set("io", io);
 
 /* middleware */
 app.use(bodyParser.json());
@@ -45,53 +45,103 @@ app.use('/api/wa/category', waCategoryRoutes);
 app.use('/api/wa/order', waOrderRoutes);
 app.use('/api/wa/payment', waPaymentRoutes);
 
+
+app.get("/", (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Home</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 40px;
+            }
+            button {
+              padding: 10px 16px;
+              font-size: 16px;
+              cursor: pointer;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Home Page</h1>
+          <p>Server is running successfully 🚀</p>
+          <button onclick="window.location.href='/more'">
+            Go to More Page
+          </button>
+        </body>
+      </html>
+    `);
+  });
+  
+  /**
+   * More page
+   */
+  app.get("/more", (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>More</title>
+        </head>
+        <body>
+          <h1>More Page</h1>
+          <p>This is another route.</p>
+          <a href="/">⬅ Back to Home</a>
+        </body>
+      </html>
+    `);
+  });
+
+
 /* error handler */
 app.use((err, req, res, next) => {
-    logger.error(
-        {
-            method: req.method,
-            url: req.originalUrl,
-            stack: err.stack,
-        },
-        err.message
-    );
+    // logger.error(
+    //     {
+    //         method: req.method,
+    //         url: req.originalUrl,
+    //         stack: err.stack,
+    //     },
+    //     err.message
+    // );
     res.status(err.status || 500).json({
         message: err.message || 'Internal Server Error',
         stack: err?.stack
     });
 });
 
-process.on("unhandledRejection", (reason) => {
-    logger.error(reason, "Unhandled Promise Rejection");
-});
+// process.on("unhandledRejection", (reason) => {
+//     logger.error(reason, "Unhandled Promise Rejection");
+// });
 
-process.on("uncaughtException", (err) => {
-    logger.fatal(err, "Uncaught Exception");
-});
+// process.on("uncaughtException", (err) => {
+//     logger.fatal(err, "Uncaught Exception");
+// });
 
 
-/* graceful shutdown */
-process.on('SIGINT', async () => {
-    await prisma.$disconnect();
-    process.exit(0);
-});
+// /* graceful shutdown */
+// process.on('SIGINT', async () => {
+//     await prisma.$disconnect();
+//     process.exit(0);
+// });
 
-process.on('SIGTERM', async () => {
-    await prisma.$disconnect();
-    process.exit(0);
-});
+// process.on('SIGTERM', async () => {
+//     await prisma.$disconnect();
+//     process.exit(0);
+// });
 
 const PORT = process.env.PORT || 3000;
 async function startServer() {
     try {
-      await connectDB();
+    //   await connectDB();
   
       server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
       });
     } catch (err) {
-      logger.fatal(err, "Failed to start server");
-      process.exit(1);
+    //   logger.fatal(err, "Failed to start server");
+    //   process.exit(1);
     }
   }
   
