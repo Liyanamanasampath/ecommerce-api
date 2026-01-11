@@ -68,7 +68,7 @@ app.get("/", (req, res) => {
           <h1>Home Page</h1>
           <p>Server is running successfully 🚀</p>
           <button onclick="window.location.href='/more'">
-            Go to More Page update
+            Go to More Page update for docker
           </button>
         </body>
       </html>
